@@ -1,0 +1,36 @@
+################ Build options #######################################
+
+NAME		:= @PKG_NAME@
+MAJOR		:= @PKG_MAJOR@
+MINOR		:= @PKG_MINOR@
+
+#DEBUG		:= 1
+
+################ Programs ############################################
+
+CC		:= @CC@
+LD		:= @CC@
+INSTALL		:= @INSTALL@
+
+INSTALLEXE	:= ${INSTALL} -D -p -m 755 -s
+INSTALLDATA	:= ${INSTALL} -D -p -m 644
+
+################ Destination #########################################
+
+BINDIR		:= @sbindir@
+MANDIR		:= @mandir@
+
+################ Compiler options ####################################
+
+CFLAGS		:= -Wall -Wextra -Wredundant-decls -Wshadow -std=c99 \
+		   -march=native -ffunction-sections -fdata-sections \
+		   @SYSWARNS@ @CUSTOMINCDIR@
+LDFLAGS		:= @CUSTOMLIBDIR@
+LIBS		:= @libcurses@
+ifdef DEBUG
+    CFLAGS	+= -O0 -g
+else
+    CFLAGS	+= -Os -g0 -DNDEBUG=1
+    LDFLAGS	+= -s -Wl,-O1,-gc-sections
+endif
+O		:= .o/

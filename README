@@ -1,0 +1,6 @@
+TIEDIT
+======
+
+Directly displays and edits terminfo files, with all capabilities properly named.
+
+    ./configure && make && make install && tiedit xterm
