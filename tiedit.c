@@ -127,7 +127,38 @@ static void FillRect (unsigned x, unsigned y, unsigned w, unsigned h)
 
 static void DrawLine (unsigned l)
 {
-    mvprintw (l, 1, "Line %u", _topline+l);
+    move (l, 1);
+    const unsigned dl = _topline+l;
+    if (dl < _info.h.nBooleans) {
+	const unsigned di = dl - 0;
+	printw ("Boolean %u: %s", di, _info.abool[di] ? "true" : "false");
+    } else if (dl < _info.h.nBooleans + _info.h.nNumbers) {
+	const unsigned di = dl - _info.h.nBooleans;
+	printw ("Number %u: %u", di, _info.anum[di]);
+    } else if (dl < _info.h.nBooleans + _info.h.nNumbers + _info.h.nStrings) {
+	const unsigned di = dl - (_info.h.nBooleans + _info.h.nNumbers);
+	printw ("String %u: ", di);
+	const char* s = "";
+	unsigned slen = 0;
+	if (_info.astro[di] < _info.h.strtableSize) {
+	    s = _info.strings+_info.astro[di];
+	    slen = strnlen (s, _info.h.strtableSize - _info.astro[di]);
+	}
+	for (unsigned i = 0; i < slen; ++i) {
+	    unsigned char c = s[i];
+	    if (c < ' ' || c > '~') {
+		attron (A_BOLD);
+		if (c < ' ') {
+		    addch ('^');
+		    addch ('A'-1+c);
+		} else
+		    printw ("\\%o", c);
+		attroff (A_BOLD);
+	    } else
+		addch (c);
+	}
+    } else
+	addstr ("Huh?");
 }
 
 static void Draw (void)
