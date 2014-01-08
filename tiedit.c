@@ -17,13 +17,14 @@
 //{{{ Prototypes -------------------------------------------------------
 
 #define KEY_ESCAPE	27
+#define COLOR_DEFAULT	-1
 
 static inline unsigned min (unsigned a, unsigned b) CONST;
 static void* Realloc (void* op, size_t nsz);
 static void ReadBytes (int fd, void* buf, size_t bufsz);
 
 static void FillRect (unsigned x, unsigned y, unsigned w, unsigned h);
-static void DrawLine (unsigned l);
+static void DrawLine (unsigned l, bool selected);
 static void Draw (void);
 static void OnKey (unsigned key);
 
@@ -81,6 +82,28 @@ static struct STerminfo _info = {{0,0,0,0,0,0},NULL,NULL,NULL,NULL,NULL};
 static bool _quitting = false;
 static unsigned _topline = 0;
 static unsigned _selection = 0;
+enum EUIColor {
+    color_Name,
+    color_Value,
+    color_ValueSpecial,
+    color_Selection,
+    color_SelectedName,
+    color_SelectedValue,
+    color_SelectedValueSpecial,
+    color_StatusLine,
+    NColors
+};
+static const unsigned c_Pairs[NColors][2] = {
+    { COLOR_CYAN,		COLOR_DEFAULT },
+    { COLOR_DEFAULT,		COLOR_DEFAULT },
+    { COLOR_CYAN,		COLOR_DEFAULT },
+    { COLOR_CYAN,		COLOR_DEFAULT },
+    { COLOR_CYAN,		COLOR_DEFAULT },
+    { COLOR_CYAN,		COLOR_DEFAULT },
+    { COLOR_CYAN,		COLOR_DEFAULT },
+    { COLOR_DEFAULT,		COLOR_BLACK }
+};
+static unsigned _color[NColors] = { A_NORMAL, A_NORMAL, A_BOLD, A_REVERSE, A_REVERSE, A_REVERSE, A_BOLD| A_REVERSE, A_REVERSE };
 
 //}}}-------------------------------------------------------------------
 //{{{ Utility functions
@@ -151,8 +174,18 @@ static void FillRect (unsigned x, unsigned y, unsigned w, unsigned h)
     }
 }
 
-static void DrawLine (unsigned l)
+static inline void SetColor (enum EUIColor c, bool selected)
 {
+    attrset (_color[c+selected*4]);
+}
+
+static void DrawLine (unsigned l, bool selected)
+{
+    if (selected) {
+	SetColor (color_Selection, false);
+	FillRect (0, l, COLS, 1);
+    }
+    SetColor (color_Name, selected);
     move (l, 1);
     const unsigned dl = _topline+l;
     if (dl < FirstNumber) {
@@ -160,13 +193,17 @@ static void DrawLine (unsigned l)
 	const char* v = "false";
 	if (di < _info.h.nBooleans && _info.abool[di])
 	    v = "true";
-	printw ("%-26s: %s", GetBooleanName(di), v);
+	printw ("%-26s: ", GetBooleanName(di));
+	SetColor (color_Value, selected);
+	addstr (v);
     } else if (dl < FirstString) {
 	const unsigned di = dl - FirstNumber;
 	int16_t v = -1;
 	if (di < _info.h.nNumbers)
 	    v = _info.anum[di];
-	printw ("%-26s: %hd", GetNumberName(di), v);
+	printw ("%-26s: ", GetNumberName(di));
+	SetColor (color_Value, selected);
+	printw ("%hd", v);
     } else if (dl < NValues) {
 	const unsigned di = dl - FirstString;
 	printw ("%-26s: ", GetStringName(di));
@@ -176,16 +213,17 @@ static void DrawLine (unsigned l)
 	    s = _info.strings+_info.astro[di];
 	    slen = strnlen (s, _info.h.strtableSize - _info.astro[di]);
 	}
+	SetColor (color_Value, selected);
 	for (unsigned i = 0; i < slen; ++i) {
 	    unsigned char c = s[i];
 	    if (c < ' ' || c > '~') {
-		attron (A_BOLD);
+		SetColor (color_ValueSpecial, selected);
 		if (c < ' ') {
 		    addch ('^');
 		    addch ('A'-1+c);
 		} else
 		    printw ("\\%o", c);
-		attroff (A_BOLD);
+		SetColor (color_Value, selected);
 	    } else
 		addch (c);
 	}
@@ -197,18 +235,12 @@ static void Draw (void)
 {
     erase();
     const unsigned nVisible = min (NValues, LINES-1), visselection = _selection-_topline;
-    for (unsigned l = 0; l < nVisible; ++l) {
-	if (visselection == l)
-	    attron (A_REVERSE);
-	FillRect (0, l, COLS, 1);
-	DrawLine (l);
-	if (visselection == l)
-	    attroff (A_REVERSE);
-    }
-    attron (A_REVERSE);
+    for (unsigned l = 0; l < nVisible; ++l)
+	DrawLine (l, visselection == l);
+    attron (_color[color_StatusLine]);
     FillRect (0, LINES-1, COLS, 1);
     mvaddstr (LINES-1, 1, _info.name);
-    attroff (A_REVERSE);
+    attroff (_color[color_StatusLine]);
 }
 
 static void OnKey (unsigned key)
@@ -260,6 +292,14 @@ static void InitUI (void)
     noecho();
     keypad (stdscr, true);
     curs_set (false);
+    if (has_colors()) {
+	start_color();
+	use_default_colors();
+	for (unsigned i = 0; i < NColors; ++i) {
+	    init_pair (i+1, c_Pairs[i][0], c_Pairs[i][1]);
+	    _color[i] |= COLOR_PAIR(i+1);
+	}
+    }
 }
 
 static void EventLoop (void)
