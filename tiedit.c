@@ -35,9 +35,13 @@ static void OnMsgSignal (int sig);
 static void InstallCleanupHandlers (void);
 
 enum {
+    FirstBoolean,
     NBooleans	= 44,
+    FirstNumber = FirstBoolean + NBooleans,
     NNumbers	= 39,
-    NStrings	= 414
+    FirstString = FirstNumber + NNumbers,
+    NStrings	= 414,
+    NValues	= FirstString + NStrings
 };
 
 static const char* GetStrtableEntry (unsigned idx, unsigned maxstr, const char* strs, unsigned strssize) PURE;
@@ -115,7 +119,10 @@ static void LoadTerminfo (const char* tifile)
 	exit (EXIT_FAILURE);
     }
     ReadBytes (fd, &_info.h, sizeof(_info.h));
-    if (_info.h.magic != TERMINFO_MAGIC) {
+    if (_info.h.magic != TERMINFO_MAGIC
+	|| _info.h.nBooleans > NBooleans
+	|| _info.h.nNumbers > NNumbers
+	|| _info.h.nStrings > NStrings) {
 	printf ("Error: %s is not a terminfo file\n", tifile);
 	exit (EXIT_FAILURE);
     }
@@ -148,18 +155,24 @@ static void DrawLine (unsigned l)
 {
     move (l, 1);
     const unsigned dl = _topline+l;
-    if (dl < _info.h.nBooleans) {
-	const unsigned di = dl - 0;
-	printw ("%-26s: %s", GetBooleanName(di), _info.abool[di] ? "true" : "false");
-    } else if (dl < _info.h.nBooleans + _info.h.nNumbers) {
-	const unsigned di = dl - _info.h.nBooleans;
-	printw ("%-26s: %hd", GetNumberName(di), _info.anum[di]);
-    } else if (dl < (unsigned) _info.h.nBooleans + _info.h.nNumbers + _info.h.nStrings) {
-	const unsigned di = dl - (_info.h.nBooleans + _info.h.nNumbers);
+    if (dl < FirstNumber) {
+	const unsigned di = dl - FirstBoolean;
+	const char* v = "false";
+	if (di < _info.h.nBooleans && _info.abool[di])
+	    v = "true";
+	printw ("%-26s: %s", GetBooleanName(di), v);
+    } else if (dl < FirstString) {
+	const unsigned di = dl - FirstNumber;
+	int16_t v = -1;
+	if (di < _info.h.nNumbers)
+	    v = _info.anum[di];
+	printw ("%-26s: %hd", GetNumberName(di), v);
+    } else if (dl < NValues) {
+	const unsigned di = dl - FirstString;
 	printw ("%-26s: ", GetStringName(di));
 	const char* s = "";
 	unsigned slen = 0;
-	if (_info.astro[di] < _info.h.strtableSize) {
+	if (di < _info.h.nStrings && _info.astro[di] < _info.h.strtableSize) {
 	    s = _info.strings+_info.astro[di];
 	    slen = strnlen (s, _info.h.strtableSize - _info.astro[di]);
 	}
@@ -177,14 +190,13 @@ static void DrawLine (unsigned l)
 		addch (c);
 	}
     } else
-	addstr ("Huh?");
+	addstr ("???");
 }
 
 static void Draw (void)
 {
     erase();
-    const unsigned nLines = _info.h.nBooleans + _info.h.nNumbers + _info.h.nStrings;
-    const unsigned nVisible = min (nLines, LINES-1), visselection = _selection-_topline;
+    const unsigned nVisible = min (NValues, LINES-1), visselection = _selection-_topline;
     for (unsigned l = 0; l < nVisible; ++l) {
 	if (visselection == l)
 	    attron (A_REVERSE);
@@ -201,14 +213,13 @@ static void Draw (void)
 
 static void OnKey (unsigned key)
 {
-    const unsigned nLines = _info.h.nBooleans + _info.h.nNumbers + _info.h.nStrings;
     const unsigned pageSize = LINES-1;
     if (key == KEY_ESCAPE || key == 'q')
 	_quitting = true;
     else if (key == KEY_HOME || key == '0')
 	_selection = 0;
     else if (key == KEY_END || key == 'G')
-	_selection = nLines-1;
+	_selection = NValues-1;
     else if (key == 'H')
 	_selection = _topline;
     else if (key == 'M')
@@ -217,7 +228,7 @@ static void OnKey (unsigned key)
 	_selection = _topline+(pageSize-1);
     else if ((key == KEY_UP || key == 'k') && _selection > 0)
 	--_selection;
-    else if ((key == KEY_DOWN || key == 'j') && _selection < nLines-1)
+    else if ((key == KEY_DOWN || key == 'j') && _selection < NValues-1)
 	++_selection;
     else if (key == KEY_PPAGE || key == 'b') {
 	if (_selection > pageSize)
@@ -225,10 +236,10 @@ static void OnKey (unsigned key)
 	else
 	    _selection = 0;
     } else if (key == KEY_NPAGE || key == ' ') {
-	if (_selection + pageSize < nLines-1)
+	if (_selection + pageSize < NValues-1)
 	    _selection += pageSize;
 	else
-	    _selection = nLines-1;
+	    _selection = NValues-1;
     }
     if (_topline > _selection)
 	_topline = _selection;
