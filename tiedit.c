@@ -16,15 +16,15 @@
 
 //{{{ Prototypes -------------------------------------------------------
 
+#define KEY_ESCAPE	27
+
 static void Draw (void);
+static void OnKey (unsigned key);
 
 static void CleanupUI (void);
 static void OnQuitSignal (int sig);
 static void OnMsgSignal (int sig);
 static void InstallCleanupHandlers (void);
-
-//}}}-------------------------------------------------------------------
-//{{{ Terminfo data loading and editing
 
 enum { TERMINFO_MAGIC = 0432 };
 
@@ -47,7 +47,13 @@ struct STerminfo {
     char*		strings;
 };
 
+//----------------------------------------------------------------------
+
 static struct STerminfo _info = {{0,0,0,0,0,0},NULL,NULL,NULL,NULL,NULL};
+static bool _quitting = false;
+
+//}}}-------------------------------------------------------------------
+//{{{ Terminfo data loading and editing
 
 static void ReadBytes (int fd, void* buf, size_t bufsz)
 {
@@ -111,6 +117,12 @@ static void Draw (void)
 	addch (' ');
     mvaddstr (LINES-1, 1, _info.name);
     attroff (A_REVERSE);
+}
+
+static void OnKey (unsigned key)
+{
+    if (key == 'q' || key == KEY_ESCAPE)
+	_quitting = true;
 }
 
 //}}}-------------------------------------------------------------------
@@ -177,8 +189,12 @@ int main (void)
 	puts ("Error: unable to initialize UI");
 	return (EXIT_FAILURE);
     }
-    Draw();
-    getch();
+    while (!_quitting) {
+	Draw();
+	int key = getch();
+	if (key > 0)
+	    OnKey (key);
+    }
     return (EXIT_SUCCESS);
 }
 
