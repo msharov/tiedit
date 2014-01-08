@@ -31,7 +31,7 @@ enum { TERMINFO_MAGIC = 0432 };
 /// The header of the terminfo file
 struct STerminfoHeader {
     uint16_t	magic;		///< Equal to TERMINFO_MAGIC constant above.
-    uint16_t	namesSize;
+    uint16_t	nameSize;
     uint16_t	nBooleans;
     uint16_t	nNumbers;
     uint16_t	nStrings;
@@ -39,11 +39,11 @@ struct STerminfoHeader {
 };
 
 struct STerminfo {
-    struct STerminfoHeader	h;
+    struct STerminfoHeader h;
     char*		name;
     bool*		abool;
     int16_t*		anum;
-    int16_t*		astro;
+    uint16_t*		astro;
     char*		strings;
 };
 
@@ -79,19 +79,38 @@ static void LoadTerminfo (const char* tifile)
 	printf ("Error: %s is not a terminfo file\n", tifile);
 	exit (EXIT_FAILURE);
     }
-    _info.name = (char*) Realloc (_info.name, _info.h.namesSize);
-    ReadBytes (fd, _info.name, _info.h.namesSize);
-
+    _info.name = (char*) Realloc (_info.name, _info.h.nameSize * sizeof(char));
+    _info.abool = (bool*) Realloc (_info.abool, _info.h.nBooleans * sizeof(bool));
+    _info.anum = (int16_t*) Realloc (_info.anum, _info.h.nNumbers * sizeof(int16_t));
+    _info.astro = (uint16_t*) Realloc (_info.astro, _info.h.nStrings * sizeof(uint16_t));
+    _info.strings = (char*) Realloc (_info.strings, _info.h.strtableSize * sizeof(char));
+    ReadBytes (fd, _info.name, _info.h.nameSize * sizeof(char));
+    ReadBytes (fd, _info.abool, _info.h.nBooleans * sizeof(bool));
+    ReadBytes (fd, _info.anum, _info.h.nNumbers * sizeof(int16_t));
+    ReadBytes (fd, _info.astro, _info.h.nStrings * sizeof(uint16_t));
+    ReadBytes (fd, _info.strings, _info.h.strtableSize * sizeof(char));
     close(fd);
 }
 
 //}}}-------------------------------------------------------------------
 //{{{ UI
 
+static void DrawLine (unsigned l)
+{
+    mvprintw (l, 1, "Line %u\n", l);
+}
+
 static void Draw (void)
 {
     erase();
-    mvprintw (10, 10, "%hu names: %s\n%hu bools\n%hu numbers\n%hu strings\n%hu strtable\n", _info.h.namesSize, _info.name, _info.h.nBooleans, _info.h.nNumbers, _info.h.nStrings, _info.h.strtableSize);
+    for (unsigned l = 0; l < (unsigned) LINES-1; ++l)
+	DrawLine (l);
+    attron (A_REVERSE);
+    move (LINES-1, 0);
+    for (unsigned c = 0; c < (unsigned) COLS; ++c)
+	addch (' ');
+    mvaddstr (LINES-1, 1, _info.name);
+    attroff (A_REVERSE);
 }
 
 //}}}-------------------------------------------------------------------
@@ -127,6 +146,7 @@ static void OnQuitSignal (int sig)
 static void OnMsgSignal (int sig UNUSED)
 {
     Draw();
+    refresh();
 }
 
 static void InstallCleanupHandlers (void)
