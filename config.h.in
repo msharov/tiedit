@@ -25,3 +25,5 @@
 #endif
 
 #define UNUSED	__attribute__((unused))
+#define CONST	__attribute__((const))
+#define PURE	__attribute__((pure))
