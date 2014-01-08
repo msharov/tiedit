@@ -10,6 +10,9 @@
 #include <curses.h>
 #include <signal.h>
 #include <stdbool.h>
+#include <unistd.h>
+#include <string.h>
+#include <fcntl.h>
 
 //{{{ Prototypes -------------------------------------------------------
 
@@ -35,13 +38,60 @@ struct STerminfoHeader {
     uint16_t	strtableSize;
 };
 
+struct STerminfo {
+    struct STerminfoHeader	h;
+    char*		name;
+    bool*		abool;
+    int16_t*		anum;
+    int16_t*		astro;
+    char*		strings;
+};
+
+static struct STerminfo _info = {{0,0,0,0,0,0},NULL,NULL,NULL,NULL,NULL};
+
+static void ReadBytes (int fd, void* buf, size_t bufsz)
+{
+    if (bufsz != (size_t) read (fd, buf, bufsz)) {
+	perror ("read");
+	exit (EXIT_FAILURE);
+    }
+}
+
+static void* Realloc (void* op, size_t nsz)
+{
+    void* p = realloc (op, nsz);
+    if (!p) {
+	puts ("Error: out of memory");
+	exit (EXIT_FAILURE);
+    }
+    return (p);
+}
+
+static void LoadTerminfo (const char* tifile)
+{
+    int fd = open (tifile, O_RDONLY);
+    if (fd < 0) {
+	perror ("open");
+	exit (EXIT_FAILURE);
+    }
+    ReadBytes (fd, &_info.h, sizeof(_info.h));
+    if (_info.h.magic != TERMINFO_MAGIC) {
+	printf ("Error: %s is not a terminfo file\n", tifile);
+	exit (EXIT_FAILURE);
+    }
+    _info.name = (char*) Realloc (_info.name, _info.h.namesSize);
+    ReadBytes (fd, _info.name, _info.h.namesSize);
+
+    close(fd);
+}
+
 //}}}-------------------------------------------------------------------
 //{{{ UI
 
 static void Draw (void)
 {
     erase();
-    mvaddstr (10, 10, "Hello world!");
+    mvprintw (10, 10, "%hu names: %s\n%hu bools\n%hu numbers\n%hu strings\n%hu strtable\n", _info.h.namesSize, _info.name, _info.h.nBooleans, _info.h.nNumbers, _info.h.nStrings, _info.h.strtableSize);
 }
 
 //}}}-------------------------------------------------------------------
@@ -50,6 +100,15 @@ static void Draw (void)
 static void CleanupUI (void)
 {
     endwin();
+    if (_info.name)
+	free (_info.name);
+    if (_info.abool)
+	free (_info.abool);
+    if (_info.astro)
+	free (_info.astro);
+    if (_info.astro)
+	free (_info.strings);
+    memset (&_info, 0, sizeof(_info));
 }
 
 static void OnQuitSignal (int sig)
@@ -93,6 +152,7 @@ static void InstallCleanupHandlers (void)
 int main (void)
 {
     InstallCleanupHandlers();
+    LoadTerminfo ("/usr/share/terminfo/x/xterm");
     if (!initscr()) {
 	puts ("Error: unable to initialize UI");
 	return (EXIT_FAILURE);
