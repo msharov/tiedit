@@ -1,8 +1,6 @@
 ################ Build options #######################################
 
 NAME		:= @PKG_NAME@
-MAJOR		:= @PKG_MAJOR@
-MINOR		:= @PKG_MINOR@
 
 #DEBUG		:= 1
 
@@ -14,10 +12,11 @@ INSTALL		:= @INSTALL@
 
 INSTALLEXE	:= ${INSTALL} -D -p -m 755 -s
 INSTALLDATA	:= ${INSTALL} -D -p -m 644
+RMPATH		:= rmdir -p --ignore-fail-on-non-empty
 
 ################ Destination #########################################
 
-BINDIR		:= @sbindir@
+BINDIR		:= @bindir@
 MANDIR		:= @mandir@
 
 ################ Compiler options ####################################
@@ -29,8 +28,10 @@ LDFLAGS		:= @CUSTOMLIBDIR@
 LIBS		:= @libcurses@
 ifdef DEBUG
     CFLAGS	+= -O0 -g
+    LDFLAGS	+= -g
 else
     CFLAGS	+= -Os -g0 -DNDEBUG=1
     LDFLAGS	+= -s -Wl,-O1,-gc-sections
 endif
+BUILDDIR	:= @builddir@/${NAME}
 O		:= .o/

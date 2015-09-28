@@ -2,19 +2,21 @@
 
 ################ Source files ##########################################
 
-EXE	:= ${NAME}
+EXE	:= $O${NAME}
 SRCS	:= $(wildcard *.c)
 OBJS	:= $(addprefix $O,$(SRCS:.c=.o))
 DEPS	:= ${OBJS:.o=.d}
+CONFS	:= Config.mk config.h
+ONAME   := $(notdir $(abspath $O))
 
 ################ Compilation ###########################################
 
 .PHONY: all clean distclean maintainer-clean
 
-all:	Config.mk config.h ${EXE} ${DATAF}
+all:	${CONFS} ${EXE}
 
-run:	${EXE} ${DATAF}
-	@./${EXE}
+run:	${EXE}
+	@${EXE}
 
 ${EXE}:	${OBJS}
 	@echo "Linking $@ ..."
@@ -34,37 +36,47 @@ $O%.o:	%.c
 .PHONY:	install uninstall
 
 ifdef BINDIR
-EXEI	:= $(addprefix ${BINDIR}/,${EXE})
+EXEI	:= ${BINDIR}/${NAME}
 
-install:	${EXEI} ${PAMCNFI} ${SYSDCFI} ${MANI}
-
+install:	${EXEI}
 ${EXEI}:	${EXE}
 	@echo "Installing $< as $@ ..."
 	@${INSTALLEXE} $< $@
 
 uninstall:
-	@echo "Uninstalling ${EXE} ..."
-	@rm -f ${EXEI}
+	@if [ -f ${EXEI} ]; then\
+	    echo "Removing ${EXEI} ...";\
+	    rm -f ${EXEI};\
+	    ${RMPATH} ${BINDIR};\
+	fi
 endif
 
 ################ Maintenance ###########################################
 
 clean:
-	@if [ -d $O ]; then\
-	    rm -f ${EXE} ${OBJS} ${DEPS};\
-	    rmdir $O;\
+	@if [ -h ${ONAME} ]; then\
+	    rm -f $O.d ${EXE} ${OBJS} ${DEPS} ${ONAME};\
+	    ${RMPATH} ${BUILDDIR};\
 	fi
 
 distclean:	clean
-	@rm -f Config.mk config.h config.status
+	@rm -f ${CONFS} config.status
 
 maintainer-clean: distclean
 
-${OBJS}:		Makefile Config.mk config.h
-Config.mk:		Config.mk.in
-config.h:		config.h.in
-Config.mk config.h:	configure
-	@if [ -x config.status ]; then echo "Reconfiguring ..."; ./config.status; \
-	else echo "Running configure ..."; ./configure; fi
+$O.d:   ${BUILDDIR}/.d
+	@[ -h ${ONAME} ] || ln -sf ${BUILDDIR} ${ONAME}
+${BUILDDIR}/.d:     Makefile
+	@mkdir -p ${BUILDDIR} && touch ${BUILDDIR}/.d
+
+Config.mk:	Config.mk.in
+config.h:	config.h.in
+${OBJS}:	Makefile ${CONFS} $O.d
+${CONFS}:	configure
+	@if [ -x config.status ]; then echo "Reconfiguring ...";\
+	    ./config.status;\
+	else echo "Running configure ...";\
+	    ./configure;\
+	fi
 
 -include ${DEPS}
