@@ -12,12 +12,15 @@
 #include <stdbool.h>
 #include <unistd.h>
 #include <string.h>
+#include <limits.h>
 #include <fcntl.h>
 
 //{{{ Prototypes -------------------------------------------------------
 
-#define KEY_ESCAPE	27
-#define COLOR_DEFAULT	-1
+enum {
+    KEY_ESCAPE = 27,
+    COLOR_DEFAULT = -1
+};
 
 static inline unsigned min (unsigned a, unsigned b) CONST;
 static void* Realloc (void* op, size_t nsz);
@@ -365,13 +368,26 @@ static void InstallCleanupHandlers (void)
     }
 }
 
-int main (void)
+int main (int argc, const char* const* argv)
 {
     InstallCleanupHandlers();
-    LoadTerminfo ("/usr/share/terminfo/x/xterm");
+    const char* termname = "xterm";
+    if (argc == 2)
+	termname = argv[1];
+    else if (argc > 2) {
+	puts ("Usage: tiedit [termname]");
+	return EXIT_SUCCESS;
+    }
+    const char* tidbpath = TERMINFO_DB_PATH;
+    const char* tidbenv = getenv("TERMINFO");
+    if (tidbenv)
+	tidbpath = tidbenv;
+    char termfile [PATH_MAX];
+    snprintf (termfile, sizeof(termfile), "%s/%c/%s", tidbpath, termname[0], termname);
+    LoadTerminfo (termfile);
     InitUI();
     EventLoop();
-    return (EXIT_SUCCESS);
+    return EXIT_SUCCESS;
 }
 
 //}}}-------------------------------------------------------------------
