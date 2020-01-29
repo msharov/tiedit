@@ -16,11 +16,11 @@
 #define @PKG_UNAME@_BUGREPORT	"@PKG_BUGREPORT@"
 
 // Using GNU-specific glibc features
-#define _GNU_SOURCE
+#ifndef _GNU_SOURCE
+    #define _GNU_SOURCE
+#endif
 
-// Define to 1 if you have NCurses
-#undef HAVE_CURSES_H
-#if !HAVE_CURSES_H
+#if !__has_include(<curses.h>)
     #error "Curses is required to build this package"
 #endif
 

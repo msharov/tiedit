@@ -16,22 +16,22 @@ RMPATH		:= rmdir -p --ignore-fail-on-non-empty
 
 ################ Destination #########################################
 
+prefix		:= @prefix@
 BINDIR		:= @bindir@
 MANDIR		:= @mandir@
 
 ################ Compiler options ####################################
 
-CFLAGS		:= -Wall -Wextra -Wredundant-decls -Wshadow -std=c99 \
-		   -march=native -ffunction-sections -fdata-sections \
-		   @SYSWARNS@ @CUSTOMINCDIR@
-LDFLAGS		:= @CUSTOMLIBDIR@
-LIBS		:= @libcurses@
+CFLAGS		:= -Wall -Wextra -Wredundant-decls -Wshadow \
+		   -std=c99 -ffunction-sections -fdata-sections \
+		   @incncurses@
+LIBS		:= @libncurses@
 ifdef DEBUG
     CFLAGS	+= -O0 -g
-    LDFLAGS	+= -g
+    LDFLAGS	:= -g
 else
     CFLAGS	+= -Os -g0 -DNDEBUG=1
-    LDFLAGS	+= -s -Wl,-O1,-gc-sections
+    LDFLAGS	:= -s -Wl,-O1,-gc-sections
 endif
 BUILDDIR	:= @builddir@/${NAME}
 O		:= .o/

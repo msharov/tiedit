@@ -11,7 +11,7 @@ ONAME   := $(notdir $(abspath $O))
 
 ################ Compilation ###########################################
 
-.PHONY: all clean distclean maintainer-clean
+.PHONY: all run
 
 all:	${CONFS} ${EXE}
 
@@ -24,8 +24,10 @@ ${EXE}:	${OBJS}
 
 $O%.o:	%.c
 	@echo "    Compiling $< ..."
-	@[ -d $(dir $@) ] || mkdir -p $(dir $@)
 	@${CC} ${CFLAGS} -MMD -MT "$(<:.c=.s) $@" -o $@ -c $<
+ifndef DEBUG
+	@strip -d -R .eh_frame $@
+endif
 
 %.s:	%.c
 	@echo "    Compiling $< to assembly ..."
@@ -53,6 +55,8 @@ endif
 
 ################ Maintenance ###########################################
 
+.PHONY: clean distclean maintainer-clean
+
 clean:
 	@if [ -h ${ONAME} ]; then\
 	    rm -f $O.d ${EXE} ${OBJS} ${DEPS} ${ONAME};\
@@ -64,10 +68,14 @@ distclean:	clean
 
 maintainer-clean: distclean
 
-$O.d:   ${BUILDDIR}/.d
+$O.d:	${BUILDDIR}/.d
 	@[ -h ${ONAME} ] || ln -sf ${BUILDDIR} ${ONAME}
-${BUILDDIR}/.d:     Makefile
-	@mkdir -p ${BUILDDIR} && touch ${BUILDDIR}/.d
+$O%/.d:	$O.d
+	@[ -d $(dir $@) ] || mkdir $(dir $@)
+	@touch $@
+${BUILDDIR}/.d:	Makefile
+	@[ -d $(dir $@) ] || mkdir -p $(dir $@)
+	@touch $@
 
 Config.mk:	Config.mk.in
 config.h:	config.h.in
