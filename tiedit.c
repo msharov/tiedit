@@ -113,7 +113,7 @@ static unsigned _color[NColors] = { A_NORMAL, A_NORMAL, A_BOLD, A_REVERSE, A_REV
 
 static inline unsigned min (unsigned a, unsigned b)
 {
-    return (a < b ? a : b);
+    return a < b ? a : b;
 }
 
 static void* Realloc (void* op, size_t nsz)
@@ -123,7 +123,7 @@ static void* Realloc (void* op, size_t nsz)
 	puts ("Error: out of memory");
 	exit (EXIT_FAILURE);
     }
-    return (p);
+    return p;
 }
 
 static void ReadBytes (int fd, void* buf, size_t bufsz)
@@ -353,9 +353,11 @@ static void InstallCleanupHandlers (void)
 //{{{2 Signal sets for OnQuitSignal and OnMsgSignal
 #define S(sn) (1u<<(sn))
     enum {
-	sigset_Quit = S(SIGINT)|S(SIGQUIT)|S(SIGTERM)|S(SIGPWR)|S(SIGILL)|S(SIGABRT)
-			|S(SIGBUS)|S(SIGFPE)|S(SIGSYS)|S(SIGSEGV)|S(SIGALRM)|S(SIGXCPU),
-	sigset_Msg = S(SIGHUP)|S(SIGCHLD)|S(SIGWINCH)|S(SIGURG)|S(SIGXFSZ)|S(SIGUSR1)|S(SIGUSR2)|S(SIGPIPE)
+	sigset_Quit = S(SIGINT)|S(SIGQUIT)|S(SIGTERM)|S(SIGILL)|S(SIGABRT)
+			|S(SIGBUS)|S(SIGFPE)|S(SIGSYS)|S(SIGSEGV)|S(SIGALRM)
+			|S(SIGXCPU),
+	sigset_Msg = S(SIGHUP)|S(SIGCHLD)|S(SIGWINCH)|S(SIGURG)|S(SIGXFSZ)
+			|S(SIGUSR1)|S(SIGUSR2)|S(SIGPIPE)
     };
 #undef S
 //}}}2
@@ -911,14 +913,14 @@ static const char* GetStrtableEntry (unsigned idx, unsigned maxstr, const char* 
     for (unsigned i = min(idx,maxstr)+1; --i && strs < strsend;)
 	strs += strlen(strs)+1;
 #endif
-    return (strs);
+    return strs;
 }
 
 static const char* GetBooleanName (unsigned i)
-    { return (GetStrtableEntry (i, NBooleans, c_BooleanNames, sizeof(c_BooleanNames))); }
+    { return GetStrtableEntry (i, NBooleans, c_BooleanNames, sizeof(c_BooleanNames)); }
 static const char* GetNumberName (unsigned i)
-    { return (GetStrtableEntry (i, NNumbers, c_NumberNames, sizeof(c_NumberNames))); }
+    { return GetStrtableEntry (i, NNumbers, c_NumberNames, sizeof(c_NumberNames)); }
 static const char* GetStringName (unsigned i)
-    { return (GetStrtableEntry (i, NStrings, c_StringNames, sizeof(c_StringNames))); }
+    { return GetStrtableEntry (i, NStrings, c_StringNames, sizeof(c_StringNames)); }
 
 //}}}-------------------------------------------------------------------
